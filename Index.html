@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Tool Mella</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 15px; background: #f4f6f9; color: #333; }
+        .box { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #217346; margin-top: 0; }
+        textarea { width: 100%; height: 120px; box-sizing: border-box; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 12px; margin-bottom: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; }
+        .btn-1 { background: #0078d4; }
+        .btn-2 { background: #217346; }
+        .btn-3 { background: #d83b01; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2>Mella's Excel Tool</h2>
+    <textarea id="rawText" placeholder="Tempel teks mentah di sini..."></textarea>
+    
+    <button class="btn-1" onclick="prosesData()">1. Bersihkan & Masuk Tabel</button>
+    <button class="btn-2" onclick="unduhExcel()">2. Download Excel (.xlsx)</button>
+    <button class="btn-3" onclick="hapusMemori()">Reset Memori</button>
+
+    <div id="previewArea" style="display:none;">
+        <h3>Preview Kolom Excel:</h3>
+        <table>
+            <thead><tr><th>A (DRAFT TEXT CHAT MELLA)</th></tr></thead>
+            <tbody id="tabelData"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let listDraf = [];
+
+window.onload = function() {
+    document.getElementById('rawText').value = "";
+};
+
+function prosesData() {
+    const isiTeks = document.getElementById('rawText').value.trim();
+    if (!isiTeks) { alert("Isi teks dulu, Mella!"); return; }
+
+    const baris = isiTeks.split('\n');
+    let hasil = [];
+    let drafSekarang = "";
+
+    baris.forEach(b => {
+        let bersih = b.trim();
+        if (bersih === "") return;
+        if (bersih.toLowerCase().startsWith("berikut") || bersih.toLowerCase().includes("opsi") || bersih.endsWith(":")) return;
+        if (/^\d+$/.test(bersih)) return;
+
+        if (bersih.startsWith("*") || bersih.startsWith("_") || drafSekarang === "") {
+            if (drafSekarang !== "") hasil.push(drafSekarang.trim());
+            drafSekarang = bersih;
+        } else {
+            drafSekarang += "\n" + bersih;
+        }
+    });
+    if (drafSekarang !== "") hasil.push(drafSekarang.trim());
+    
+    listDraf = hasil;
+
+    // Simpan ke memori background
+    let memoriLama = localStorage.getItem('mella_bank');
+    let dataBank = memoriLama ? JSON.parse(memoriLama) : [];
+    hasil.forEach(h => { if(!dataBank.includes(h)) dataBank.push(h); });
+    localStorage.setItem('mella_bank', JSON.stringify(dataBank));
+
+    // Munculkan di tabel
+    const tabel = document.getElementById('tabelData');
+    tabel.innerHTML = "";
+    listDraf.forEach(d => {
+        let tr = document.createElement('tr');
+        let td = document.createElement('td');
+        td.textContent = d;
+        td.style.whiteSpace = "pre-wrap";
+        tr.appendChild(td);
+        tabel.appendChild(tr);
+    });
+    document.getElementById('previewArea').style.display = "block";
+}
+
+function unduhExcel() {
+    if (listDraf.length === 0) { alert("Belum ada data untuk didownload!"); return; }
+    const wb = XLSX.utils.book_new();
+    const matriks = [["DRAFT TEXT CHAT MELLA"], ...listDraf.map(d => [d])];
+    const ws = XLSX.utils.aoa_to_sheet(matriks);
+    ws['!cols'] = [{ wch: 70 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Draf");
+    XLSX.writeFile(wb, "Draft_Mella.xlsx");
+}
+
+function hapusMemori() {
+    if (confirm("Hapus semua memori referensi gaya bahasa?")) {
+        localStorage.removeItem('mella_bank');
+        alert("Memori bersih!");
+    }
+}
+</script>
+
+</body>
+</html>
